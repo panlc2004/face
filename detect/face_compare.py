@@ -1,13 +1,11 @@
-import tensorflow as tf
-import time
-from scipy import misc
 import os
+
 import numpy as np
+import tensorflow as tf
+from scipy import misc
 from tensorflow.python.platform import gfile
-import json
 
 import detect.detect_face
-from db import db
 
 
 def load_model(model):
