@@ -4,7 +4,6 @@ import json
 
 
 def get_conn():
-    print('开始建立数据库连接')
     conn = pymysql.connect(host='10.131.0.126',
                            port=3306,
                            user='root',
@@ -16,6 +15,7 @@ def get_conn():
 
 
 def insert_person_info(name, username, face_data):
+    print('开始新增加数据')
     sql = "INSERT INTO person_info (name,username, face_data) VALUES ('" + str(name) + "'" + ",'" + str(
         username) + "','" + str(face_data) + "')"
     conn = get_conn()

@@ -1,0 +1,19 @@
+﻿{
+    "opResult":true,"opMsg":null,"rtList":
+    [
+        {
+            "Results":
+            [
+                {"PersonFlag":"刘德华","Confidence":0.6188007,"x":83,"y":56,"w":81,"h":70},
+                {"PersonFlag":"莫晓松","Confidence":0.40663588,"x":83,"y":56,"w":81,"h":70}
+            ]
+        },
+        {
+            "Results":
+                [
+                    {"PersonFlag":"莫晓松","Confidence":0.6059056,"x":174,"y":21,"w":99,"h":101},
+                    {"PersonFlag":"刘德华","Confidence":0.42519623,"x":174,"y":21,"w":99,"h":101}
+                ]
+        }
+    ]
+}

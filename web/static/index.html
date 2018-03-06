@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>demo</title>
+    <script type="text/javascript" src="JavaScripts/jquery-1.11.2.min.js"></script>
+    <script type="text/javascript" src="JavaScripts/core.js"></script>
+    <script type="text/javascript" src="JavaScripts/index.js"></script>
+    <script type="text/javascript" src="JavaScripts/hmac-sha1.js"></script>
+    <script type="text/javascript" src="JavaScripts/enc-base64.js"></script>
+    <script type="text/javascript" src="JavaScripts/crypto-js.js"></script>
+</head>
+<body>
+<p>此演示程序需要你的设备具备一个摄像头，且浏览器支持H5</p>
+<div style="width:1280px;height:720px;">
+    <video id="video" autoplay="autoplay" style="width:1280px;height:720px;display:none;"></video>
+    <br />
+    <canvas id="canvas" style="width: 640px; height: 360px;"></canvas>
+</div>
+<br />
+<br />
+<div>
+    姓名：<input id="userFlag" type="text" />
+    <input id="DoReg" type="button" value="注册" onclick="javascript: RegUser();" />
+    <input id="DoUnReg" type="button" value="注销" onclick="javascript: DeleteUser();" />
+</div>
+</body>
+</html>
+
+<script type="text/javascript">
+
+    var theCanvas = null;
+
+    // 添加事件监听器
+    window.addEventListener("DOMContentLoaded", function () {
+
+        // 获取元素，创建设置等等
+        var canvas = document.getElementById("canvas");
+        theCanvas = canvas;
+        var video = document.getElementById("video");
+        var videoObj = { "video": true };
+
+        errBack = function (error) {
+            alert(error);
+        };
+
+        // 添加video 监听器
+        if (navigator.getUserMedia) { // 标准
+            navigator.getUserMedia(videoObj, function (stream) {
+                video.src = stream;
+                video.play();
+            }, errBack);
+        } else if (navigator.webkitGetUserMedia) { // WebKit 前缀
+            navigator.webkitGetUserMedia(videoObj, function (stream) {
+                video.src = window.webkitURL.createObjectURL(stream);
+                video.play();
+            }, errBack);
+        }
+        else if (navigator.mozGetUserMedia) { // Firefox 前缀
+            navigator.mozGetUserMedia(videoObj, function (stream) {
+                video.src = window.URL.createObjectURL(stream);
+                video.play();
+            }, errBack);
+        }
+        else {
+            alert("浏览器不支持HTML5！");
+        }
+
+        setTimeout(DoTest, 100);
+
+    }, false);
+
+    function DoTest() {
+        if (null != theCanvas) {
+            theCanvas.getContext("2d").drawImage(video, 0, 0, 320, 240);
+
+            var image = new Image();
+            image.src = theCanvas.toDataURL();
+
+            var d = new Date();
+            var t = d.getTime();
+            var postDatas = new Object();
+
+            postDatas['picture'] = encodeURIComponent(image.src);
+
+            jQuery.ajax({
+                url: '/recognize_web',
+                type: 'post',
+                data: postDatas,
+                dataType: 'json',
+                async: true,
+                beforeSend: function (request) {
+                    request.setRequestHeader("AppID", "DemoSystem");
+                    request.setRequestHeader("SecretID", "A06EEB3E0D694D85");
+
+                    request.setRequestHeader("TimeStamp", t);
+                    request.setRequestHeader("Authorization", createAuth(t));
+                },
+                success: function (data, textStatus) {
+                    console.log(textStatus)
+                    if ("success" == textStatus) {
+                        /*
+                        {
+                            "opResult":true,
+                            "opMsg":null,
+                            "rtFaces":
+                            [
+                                {
+                                    "x":86,
+                                    "y":65,
+                                    "w":52,
+                                    "h":44,
+                                    "Results":
+                                    [
+                                        {
+                                            "PersonFlag":"莫晓松",
+                                            "Confidence":0.471274465
+                                        }
+                                    ]
+                                },
+                                {
+                                    "x":166,
+                                    "y":11,
+                                    "w":124,
+                                    "h":117,
+                                    "Results":
+                                    [
+                                        {
+                                            "PersonFlag":"莫晓松",
+                                            "Confidence":0.873682
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                        */
+
+                        if (!data.opResult) {
+                            alert(data.opMsg);
+                            return;
+                        }
+                        console.log(data)
+                        console.log(data.rtFaces)
+                        for (var i = 0; i < data.rtFaces.length; i++) {
+
+                            var ctx = theCanvas.getContext("2d");
+                            ctx.strokeStyle = "red";//轮廓颜色
+                            ctx.font = "16px 微软雅黑";
+                            ctx.fillStyle = "Red";
+
+                            var x = data.rtFaces[i].x;
+                            var y = data.rtFaces[i].y;
+                            var w = data.rtFaces[i].w;
+                            var h = data.rtFaces[i].h;
+
+                            ctx.strokeRect(x, y, w, h);//绘制矩形轮廓
+
+                            if (data.rtFaces[i].Results.length > 0 &&
+                                data.rtFaces[i].Results[0].Confidence > 0.75) {
+
+                                var f = data.rtFaces[i].Results[0].PersonFlag;
+                                var c = data.rtFaces[i].Results[0].Confidence;
+
+                                if (c > 0.1) {
+                                    ctx.fillText(f + "(" + c + ")", x, y - 3);
+                                }
+                            }
+                            else {
+                                ctx.fillText("---UnRegisted---", x, y - 3);
+                            }
+                        }
+
+                        setTimeout(DoTest, 100);
+                    }
+                    else { alert(textStatus); }
+                },
+                error: function (XMLHttpRequest, textStatus, errorThrown) {
+                    alert(errorThrown);
+                }
+            });
+        }
+    }
+
+    function DeleteUser() {
+
+        var userFlag = jQuery("#userFlag").val().trim();
+        if (userFlag.length < 1) {
+            alert('名称必须输入');
+            return;
+        }
+
+        var d = new Date();
+        var t = d.getTime();
+
+        var postDatas = new Object();
+        postDatas['personflag'] = encodeURIComponent(userFlag);
+
+        jQuery.ajax({
+            url: '/DelPerson',
+            type: 'post',
+            data: postDatas,
+            dataType: 'json',
+            async: true,
+            beforeSend: function (request) {
+                request.setRequestHeader("AppID", "DemoSystem");
+                request.setRequestHeader("SecretID", "A06EEB3E0D694D85");
+                request.setRequestHeader("TimeStamp", t);
+                request.setRequestHeader("Authorization", createAuth(t));
+            },
+            success: function (data, textStatus) {
+                if ("success" == textStatus) {
+                    if (!data.opResult) {
+                        alert(data.opMsg);
+                        return;
+                    }
+                    else {
+                        alert('注销成功');
+                    }
+                }
+                else {
+                    alert(textStatus);
+                }
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                alert(errorThrown);
+            }
+        });
+    }
+
+    function RegUser() {
+        var image = new Image();
+        image.src = theCanvas.toDataURL();
+
+        var userFlag = jQuery("#userFlag").val().trim();
+        if (userFlag.length < 1) {
+            alert('名称必须输入');
+            return;
+        }
+
+        var d = new Date();
+        var t = d.getTime();
+
+        var postDatas = new Object();
+        postDatas['personflag'] = encodeURIComponent(userFlag);
+        postDatas['picture'] = encodeURIComponent(image.src);
+
+        jQuery.ajax({
+            url: '/AddPerson',
+            type: 'post',
+            data: postDatas,
+            dataType: 'json',
+            async: true,
+            beforeSend: function (request) {
+                request.setRequestHeader("AppID", "DemoSystem");
+                request.setRequestHeader("SecretID", "A06EEB3E0D694D85");
+
+                request.setRequestHeader("TimeStamp", t);
+                request.setRequestHeader("Authorization", createAuth(t));
+            },
+            success: function (data, textStatus) {
+                if ("success" == textStatus) {
+                    if (!data.opResult) {
+                        alert(data.opMsg);
+                        return;
+                    }
+                    else {
+                        alert('添加成功');
+                    }
+                }
+                else {
+                    alert(textStatus);
+                }
+            },
+            error: function (XMLHttpRequest, textStatus, errorThrown) {
+                alert(errorThrown);
+            }
+        });
+    }
+
+    function createAuth(t) {
+        var APP_ID = "DemoSystem";
+        var SECRET_ID = "A06EEB3E0D694D85";
+        //这个secretkey注意自己保密，这里是演示程序写在这里了
+        var SECRET_KEY = "AE1AC7ABD6A52CD2";
+        //a,s,t顺序不要乱,t是自1970年的毫秒数
+        var orignal = "a=" + APP_ID + "&s=" + SECRET_ID + "&t=" + t;
+
+        var signTmpBytes = CryptoJS.HmacSHA1(orignal, SECRET_KEY);
+        var origTmpBytes = CryptoJS.enc.Utf8.parse(orignal);
+        var all = signTmpBytes.concat(origTmpBytes);
+        var base64 = CryptoJS.enc.Base64.stringify(all);
+        return base64;
+    }
+</script>

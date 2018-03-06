@@ -10,14 +10,31 @@ persons, caches = db.get_person_cache()
 cap = cv2.VideoCapture(0)
 margin = 32
 image_size = 160
+
+
+def to_rgb(img):
+    w, h = img.shape
+    ret = np.empty((w, h, 3), dtype=np.uint8)
+    ret[:, :, 0] = ret[:, :, 1] = ret[:, :, 2] = img
+    return ret
+
+
 while True:
     face_list = []
     ret, frame = cap.read()
-
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    if frame.ndim == 2:
+        frame = to_rgb(frame)
     # img = Image.fromarray(frame)
     # img.save('f:/x.jpg')
     # frame = np.array(img)
 
+    # print(frame)
+    # try:
+    #     print(frame.shape)
+    # except (Exception, AttributeError):
+    #     print(1)
+    print(frame.shape)
     bounding_boxes = get_face_bounding_boxes(frame)
     img_size = np.asarray(frame.shape)[0:2]
     nrof_faces = bounding_boxes.shape[0]  # 人脸数目
@@ -50,13 +67,16 @@ while True:
             score_tmp[i, :] = enm[i]
         c = np.subtract(caches, score_tmp)
         d = np.square(c)
-        s = np.sum(d, axis=2)
-        dist = np.sqrt(s)
+        dist = np.sum(d, axis=2)
+        # dist = np.sqrt(s)
         sort_index = np.argsort(dist, axis=1)
         boxs = bounding_boxes.astype(int)
         for i in range(sort_index.shape[0]):
             min_index = sort_index[i][0]
             d = dist[i][min_index]
+            print('dist:', d)
+            percent = 1 - d / 2
+            print(percent)
             if d < 0.8:
                 name = persons[min_index]['username']
                 box = boxs[i]
